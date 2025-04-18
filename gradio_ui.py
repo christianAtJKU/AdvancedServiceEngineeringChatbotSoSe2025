@@ -1,7 +1,8 @@
 import requests
 import gradio as gr
+from spacy_utils import process_text
 
-
+# Key läuft über Konto von Christian Rührlinger. VERTRAULICH BEHANDELN!
 GROQ_API_KEY = "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"
 
 #  API URL
@@ -45,7 +46,15 @@ with gr.Blocks() as ui:
     clear = gr.Button("Chat Löschen")
 
     def respond(history, message):
-        bot_reply = chat_with_groq(history, message)
+        # Text verarbeiten (Prüfen und Anonymisieren)
+        result = process_text(message)
+        if result["has_names"]:
+            print(f"Gefundene Namen: {', '.join(result['names'])}")
+            print(f"Anonymisierte Nachricht: {result['anonymized_text']}")
+
+        # Nachricht an Groq weiterleiten
+        bot_reply = chat_with_groq(history, result["anonymized_text"])
+
         history.append((message, bot_reply))
         return history, ""
 
