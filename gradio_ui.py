@@ -43,49 +43,74 @@ def chat_with_groq(history, user_message):
     else:
         return f"Error: {response.status_code} - {response.text}"
 
+def ent_pseudonymize(text):
+    """Placeholder function for ent-pseudonymizing text."""
+    # Implement the logic for ent-pseudonymization here
+    return text
+
 # Gradio Chatbot Interface
 with gr.Blocks() as ui:
-    gr.Markdown("## Privacy Chatbot")
-    
-    # Chatbot-Komponente
-    chatbot = gr.Chatbot()
-    
-    # Eingabefeld für Benutzer
-    msg = gr.Textbox(label="Enter Message")
-    
-    # Textboxen für Original- und pseudonymisierte Nachrichten
+    gr.Markdown("## Privacy Chatbot - Side-by-Side View")
+
+    # Zustände für die Chat-Verläufe
+    state_active = gr.State([])  # Originalnachrichten (inkl. Ent-Pseudonymisierung)
+    state_pseudo = gr.State([])  # Pseudonymisierte Nachrichten
+
     with gr.Row():
-        original_message_display = gr.Textbox(label="Original Message (with Names)", interactive=False)
-        pseudonymized_message_display = gr.Textbox(label="Pseudonymized Message (with IDs)", interactive=False)
-    
+        # Linke Spalte: Originalnachrichten (inkl. Ent-Pseudonymisierung)
+        with gr.Column(scale=1):
+            gr.Markdown("### Active Chat (Original Input and Ent-Pseudonymized Responses)")
+            active_chatbot = gr.Chatbot(label="Active Conversation", height=500)
+
+        # Rechte Spalte: Pseudonymisierte Nachrichten
+        with gr.Column(scale=1):
+            gr.Markdown("### Pseudonymized Log (Read-Only)")
+            pseudonymized_chatbot = gr.Chatbot(label="Pseudonymized History", height=500)
+
+    # Eingabefeld für Benutzer
+    msg = gr.Textbox(label="Enter Message", placeholder="Type your message here...")
+
     # Button zum Löschen des Chats
-    clear = gr.Button("Delete Chat")
+    clear = gr.Button("Delete Chat History")
 
     # Funktion zur Verarbeitung der Eingabe
-    def respond(history, message):
-        # Text verarbeiten (Prüfen und Pseudonymisieren)
+    def respond(active_hist, pseudo_hist, message):
+        if not message:
+            return active_hist, pseudo_hist, ""
+
+        # Pseudonymisierung der Benutzereingabe
         result = process_text(message)
-        print(f"Originalnachricht: {message}")
-        print(f"Pseudonymisierte Nachricht: {result['pseudonymized_text']}")
-        if result["has_names"]:
-            print(f"Gefundene Namen: {', '.join(result['names'])}")
+        pseudonymized_message = result["pseudonymized_text"]
 
-        # Nachricht an Groq weiterleiten (pseudonymisierte Nachricht verwenden)
-        bot_reply = chat_with_groq(history, result["pseudonymized_text"])
+        # Nachricht an Groq senden (pseudonymisierte Nachricht)
+        bot_reply = chat_with_groq(pseudo_hist, pseudonymized_message)
 
-        # Pseudonymisierte Nachricht und Bot-Antwort zum Verlauf hinzufügen
-        history.append((result["pseudonymized_text"], bot_reply))
+        # Ent-Pseudonymisierung der Antwort
+        ent_pseudonymized_bot_reply = ent_pseudonymize(bot_reply)
 
-        # Rückgabe der Original- und pseudonymisierten Nachricht für die Anzeige
-        return history, "", message, result["pseudonymized_text"]
+        # Verläufe aktualisieren
+        active_hist.append((message, ent_pseudonymized_bot_reply))
+        pseudo_hist.append((pseudonymized_message, bot_reply))
+
+        # Rückgabe der aktualisierten Verläufe und leeren der Eingabebox
+        return active_hist, pseudo_hist, ""
 
     # Verknüpfen der Eingabe und Anzeigeelemente
     msg.submit(
-        respond, 
-        [chatbot, msg], 
-        [chatbot, msg, original_message_display, pseudonymized_message_display]
+        respond,
+        [state_active, state_pseudo, msg],  # Inputs
+        [active_chatbot, pseudonymized_chatbot, msg]  # Outputs
     )
-    clear.click(lambda: [], None, chatbot)
+
+    # Funktion zum Löschen der Chats
+    def clear_chat():
+        return [], [], ""  # Leert beide Verläufe und die Eingabebox
+
+    clear.click(
+        clear_chat,
+        [],  # Keine Inputs für die Clear-Funktion
+        [state_active, state_pseudo, msg]  # Outputs: Leere beide Verläufe und die Eingabebox
+    )
 
 # Launch the app
 ui.launch(share=True)
