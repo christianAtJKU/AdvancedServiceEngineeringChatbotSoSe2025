@@ -18,11 +18,16 @@ def chat_with_groq(history, user_message):
     }
 
     # Convert Gradio chat history to OpenAI API format
-    messages = [{"role": "system", "content": "You are a helpful assistant."}]
+    messages = [
+        {"role": "system", "content": "You are a helpful assistant. All user inputs are pseudonymized and may contain placeholder IDs instead of real names. Respond accordingly."}
+    ]
     for user, bot in history:
         messages.append({"role": "user", "content": user})
         messages.append({"role": "assistant", "content": bot})
     messages.append({"role": "user", "content": user_message})
+
+    # Debug: Ausgabe der Nachricht, die an das LLM gesendet wird
+    print("Nachricht an LLM:", messages)
 
     payload = {
         "model": MODEL,
@@ -40,25 +45,46 @@ def chat_with_groq(history, user_message):
 
 # Gradio Chatbot Interface
 with gr.Blocks() as ui:
-    gr.Markdown("## Datenschutz Chatbot")
+    gr.Markdown("## Privacy Chatbot")
+    
+    # Chatbot-Komponente
     chatbot = gr.Chatbot()
-    msg = gr.Textbox(label="Nachricht eingeben")
-    clear = gr.Button("Chat Löschen")
+    
+    # Eingabefeld für Benutzer
+    msg = gr.Textbox(label="Enter Message")
+    
+    # Textboxen für Original- und pseudonymisierte Nachrichten
+    with gr.Row():
+        original_message_display = gr.Textbox(label="Original Message (with Names)", interactive=False)
+        pseudonymized_message_display = gr.Textbox(label="Pseudonymized Message (with IDs)", interactive=False)
+    
+    # Button zum Löschen des Chats
+    clear = gr.Button("Delete Chat")
 
+    # Funktion zur Verarbeitung der Eingabe
     def respond(history, message):
-        # Text verarbeiten (Prüfen und Anonymisieren)
+        # Text verarbeiten (Prüfen und Pseudonymisieren)
         result = process_text(message)
+        print(f"Originalnachricht: {message}")
+        print(f"Pseudonymisierte Nachricht: {result['pseudonymized_text']}")
         if result["has_names"]:
             print(f"Gefundene Namen: {', '.join(result['names'])}")
-            print(f"Anonymisierte Nachricht: {result['anonymized_text']}")
 
-        # Nachricht an Groq weiterleiten
-        bot_reply = chat_with_groq(history, result["anonymized_text"])
+        # Nachricht an Groq weiterleiten (pseudonymisierte Nachricht verwenden)
+        bot_reply = chat_with_groq(history, result["pseudonymized_text"])
 
-        history.append((message, bot_reply))
-        return history, ""
+        # Pseudonymisierte Nachricht und Bot-Antwort zum Verlauf hinzufügen
+        history.append((result["pseudonymized_text"], bot_reply))
 
-    msg.submit(respond, [chatbot, msg], [chatbot, msg])
+        # Rückgabe der Original- und pseudonymisierten Nachricht für die Anzeige
+        return history, "", message, result["pseudonymized_text"]
+
+    # Verknüpfen der Eingabe und Anzeigeelemente
+    msg.submit(
+        respond, 
+        [chatbot, msg], 
+        [chatbot, msg, original_message_display, pseudonymized_message_display]
+    )
     clear.click(lambda: [], None, chatbot)
 
 # Launch the app
