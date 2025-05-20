@@ -1,7 +1,21 @@
-Wichtig: zuerst ein venv erstellen und die requirements.txt installieren.
-dann das venv aktivieren und folgenden befehl ausführen:
+# SafeChat
+Ein interaktiver Chatbot mit Pseudonymisierungsfunktion für personenbezogene Daten, realisiert mit [spaCy](https://spacy.io/) und [Gradio](https://gradio.app/).
+
+```bash
+# virtuelle Umgebung erstellen
+python -m venv .venv
+
+# virtuelle Umgebung aktivieren
+# Windows:
+.venv\Scripts\activate
+# macOS/Linux:
+source .venv/bin/activate
+
+# Abhängigkeiten installieren
+pip install -r requirements.txt
+
+# spaCy-Modell herunterladen
 python -m spacy download en_core_web_sm
 
-Ausführen der app: Im Terminal den Befehl "python gradio_ui.py" eingeben. Die Url des Chatbots wird dann im Terminal angezeigt.
-
-Bitte nur englisch mit dem Chatbot schreiben, weil er auf die erkennung von englischen Text ausgelegt ist.
+# Anwendung starten
+python gradio_ui.py
