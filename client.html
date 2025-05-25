@@ -1,0 +1,362 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>TrustChat</title>
+
+<!-- Sprechblase als Favicon (inline SVG → keine Extra-Datei nötig) -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%234b5563' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'/%3E%3C/svg%3E">
+
+<style>
+/* ---------- Grundfarben / Variablen --------------------------- */
+:root{
+  --bg:#fff; --user:#f1f2f4; --bot:#ffffff; --border:#d1d5db; --text:#4b5563;
+  --radius:10px; --max-w:720px; --ta:#fff;
+}
+.dark{
+  --bg:#0d1117; --user:#51565c; --bot:#0d1117; --border:#30363d; --text:#e6edf3; --ta:#51565c;
+}
+
+/* ---------- Layout / Header ----------------------------------- */
+*{box-sizing:border-box}
+body{margin:0;height:100vh;display:flex;flex-direction:column;background:var(--bg);
+     font-family:system-ui,sans-serif;color:var(--text);transition:.25s}
+
+header{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;border-bottom:1px solid var(--border);background:var(--bg)
+}
+header h1{margin:0;font-size:1.1rem;font-weight:normal;display:flex;align-items:center;gap:6px}
+header svg.logo{width:24px;height:24px;stroke:#6b7280}
+
+/* ---------- Icons / Buttons ----------------------------------- */
+.icon{background:none;border:none;padding:6px;cursor:pointer;line-height:0}
+.icon svg{width:20px;height:20px;stroke:#6b7280}
+.trash svg{stroke:#e53935}
+
+/* ---------- Chatbereich --------------------------------------- */
+main{flex:1;overflow-y:auto;padding:16px;display:flex;justify-content:center;position:relative}
+.placeholder{
+  position:absolute;inset:0;display:flex;justify-content:center;align-items:center;
+  font-size:1.8rem;color:#9ca3af;text-align:center;pointer-events:none
+}
+.chat{width:100%;max-width:var(--max-w);display:flex;flex-direction:column;gap:12px}
+.hidden{display:none}
+
+/* ---------- Nachrichtenblasen --------------------------------- */
+.msg{display:flex;gap:12px}.me{justify-content:flex-end}
+.bbl{max-width:80%;padding:10px 14px;border-radius:var(--radius);line-height:1.4;white-space:pre-wrap}
+.me  .bbl{background:var(--user)}
+.bot .bbl{background:var(--bot)}
+
+/* ---------- Eingabezeile -------------------------------------- */
+form{display:flex;gap:8px;padding:16px;margin-bottom:8px;justify-content:center;background:var(--bg)}
+.wrapper{width:100%;max-width:var(--max-w);display:flex;gap:8px}
+textarea{
+  flex:1;resize:none;border:1px solid var(--border);padding:12px 14px;background:var(--ta);
+  border-radius:var(--radius);font:inherit;min-height:60px;max-height:500px;
+  overflow:hidden;
+}
+textarea:focus{outline:none}
+
+/* ---------- Senden-Button (Pfeil ↑) ---------------------------- */
+.send{
+  width:42px;height:42px;border-radius:50%;display:flex;align-items:center;
+  justify-content:center;border:none;cursor:pointer;background:#000;transition:background .15s
+}
+.send svg{width:20px;height:20px;stroke:#fff}
+.send:disabled{background:var(--border);cursor:default}
+
+/* ---------- Popup / Dialog ------------------------------------ */
+dialog{
+  border:none;border-radius:var(--radius);padding:28px 32px 24px;box-shadow:0 4px 24px rgba(0,0,0,.2);
+  width:420px;max-width:95%;background:var(--bg);color:var(--text);position:relative
+}
+dialog::backdrop{background:#0008}
+.setting{display:flex;justify-content:space-between;align-items:center;margin:10px 0}
+.switch{position:relative;width:46px;height:24px}
+.switch input{opacity:0;width:0;height:0}
+.slider{
+  position:absolute;inset:0;background:#9ca3af;border-radius:24px;transition:.2s
+}
+.slider:before{
+  content:"";position:absolute;height:20px;width:20px;left:2px;top:2px;background:#fff;
+  border-radius:50%;transition:.2s
+}
+input:checked + .slider{background:#10b981}
+input:checked + .slider:before{transform:translateX(22px)}
+
+/* ❌-Button oben rechts */
+#close-dlg,
+#pi-close {
+  position:absolute;top:40px;right:30px;
+}
+#close-dlg svg,
+#pi-close svg{
+  stroke:#6b7280;
+}
+
+.counter{font-size:.75rem;color:#6b7280;align-self:center;margin:0 4px}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>
+    TrustChat
+    <!-- Sprechblase im gleichen Stil wie die anderen Icons -->
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+         fill="none" stroke="currentColor" stroke-width="2" style="width:20px;height:20px"
+         stroke-linecap="round" stroke-linejoin="round" class="logo">
+      <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+    </svg>
+  </h1>
+
+  <div>
+    <button id="download" class="icon" aria-label="Download chat">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M12 3v12m0 0 5-5m-5 5-5-5M5 19h14"/>
+      </svg>
+    </button>
+    <button id="toggle"   class="icon" aria-label="Switch view"></button>
+    <button id="theme"    class="icon" aria-label="Toggle theme"></button>
+    <button id="clear"    class="icon trash" aria-label="Clear chat">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M3 6h18M4 6l1.6 14.4A2 2 0 0 0 7.6 22h8.8a2 2 0 0 0 2-1.6L20 6M9 6v12m6-12v12"/>
+      </svg>
+    </button>
+    <button id="settings" class="icon" aria-label="Settings">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+        <path stroke-linecap="round" stroke-linejoin="round"
+              d="M10.3 2.1 9 4.3a8 8 0 0 0-1.98.82L4.5 4.8l-2 3.5 1.6 2.5a8 8 0 0 0 0 2.4L2.5 15l2 3.5 2.52-.32A8 8 0 0 0 9 19.7l1.3 2.2h3.4l1.3-2.2a8 8 0 0 0 1.98-.82l2.52.32 2-3.5-1.6-2.5a8 8 0 0 0 0-2.4L21.5 8l-2-3.5-2.52.32A8 8 0 0 0 15 4.3L13.7 2.1h-3.4zM12 15a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
+      </svg>
+    </button>
+  </div>
+</header>
+
+<!-- Chatansichten -------------------------------------------------- -->
+<main>
+  <div id="placeholder" class="placeholder">Let’s keep it private, baby!</div>
+  <section id="view-id"   class="chat"></section>
+  <section id="view-name" class="chat hidden"></section>
+</main>
+
+<!-- Eingabe -------------------------------------------------------- -->
+<form id="form" autocomplete="off">
+  <div class="wrapper" style="align-items:flex-end">
+    <textarea id="in" rows="1" placeholder="Ask me anything…" maxlength="1000"></textarea>
+
+    <div style="display:flex;flex-direction:column;align-items:center;gap:4px">
+      <span id="cnt" class="counter">0/1000</span>
+      <button class="send" id="send" aria-label="Send" disabled>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M12 19V5M5 12l7-7 7 7"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</form>
+
+<!-- ----------------------------- Popup --------------------------- -->
+<dialog id="dlg">
+  <button class="icon" id="close-dlg" aria-label="Close">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18M6 6l12 12"/>
+    </svg>
+  </button>
+  <h3>Pseudonymise</h3>
+  <div id="settings-list"></div>
+</dialog>
+
+<dialog id="pi-dlg">
+  <button class="icon" id="pi-close" aria-label="Close">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+      <path stroke-linecap="round" stroke-linejoin="round" d="M18 6 6 18M6 6l12 12"/>
+    </svg>
+  </button>
+  <h3>Potential prompt injection</h3>
+  <p>Please rephrase your input without overriding instructions.</p>
+</dialog>
+
+<!-- ----------------------------- Script -------------------------- -->
+<script>
+/* (JavaScript unverändert – nur close-Button moved) */
+(() => {
+const viewID   = document.getElementById('view-id');
+const viewName = document.getElementById('view-name');
+const form     = document.getElementById('form');
+const input    = document.getElementById('in');
+const sendBtn  = document.getElementById('send');
+const toggle   = document.getElementById('toggle');
+const clearBtn = document.getElementById('clear');
+const themeBtn = document.getElementById('theme');
+const settingsBtn = document.getElementById('settings');
+const placeholder = document.getElementById('placeholder');
+const dlg      = document.getElementById('dlg');
+const settingsList = document.getElementById('settings-list');
+const closeDlg = document.getElementById('close-dlg');
+
+const MAX_CHARS = 1000;
+const cnt   = document.getElementById('cnt');
+const downloadBtn = document.getElementById('download');
+const convo = [];
+const convoIDs = [];
+const PI_REGEX = /(ignore|disregard|override).*(instruction|previous)/i;
+const piDlg = document.getElementById('pi-dlg');
+document.getElementById('pi-close').onclick = () => piDlg.close();
+
+/* ---------- Icons ---------- */
+const eye =`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+  <path stroke-linecap="round" stroke-linejoin="round"
+        d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12zm11 4a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+</svg>`;
+const eyeOff =`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+  <path stroke-linecap="round" stroke-linejoin="round"
+        d="M3 3l18 18M10.6 10.6a4 4 0 0 0 5 5M9.5 4.21A11.08 11.08 0 0 1 12 4c7 0 11 8 11 8a21.77 21.77 0 0 1-2.17 3.17M6.12 6.12A21.77 21.77 0 0 0 1 12s4 8 11 8a10.93 10.93 0 0 0 5.79-1.53"/>
+</svg>`;
+const sun =`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+  <circle cx="12" cy="12" r="4"/><path stroke-linecap="round" d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2m16 0h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/>
+</svg>`;
+const moon =`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" stroke-width="2" fill="none">
+  <path stroke-linecap="round" stroke-linejoin="round"
+        d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+</svg>`;
+
+/* ---------- State ---------- */
+let showIDs = true; toggle.innerHTML = eyeOff;
+let dark = false;   themeBtn.innerHTML = moon;
+const PII_LABELS = ["PERSON","ORG","LOCATION","DATE","EMAIL","PHONE"];
+let activeLabels = new Set(PII_LABELS);
+let biasOn = true;
+
+/* ---------- Placeholder --------------------------------------- */
+function updatePlaceholder(){
+  const empty = !viewID.children.length && !viewName.children.length;
+  placeholder.classList.toggle('hidden', !empty);
+}
+updatePlaceholder();
+
+/* ---------- View toggle --------------------------------------- */
+toggle.onclick = () =>{
+  showIDs = !showIDs;
+  viewID.classList.toggle('hidden',!showIDs);
+  viewName.classList.toggle('hidden',showIDs);
+  toggle.innerHTML = showIDs ? eyeOff : eye;
+};
+
+/* ---------- Theme toggle -------------------------------------- */
+themeBtn.onclick = ()=>{
+  dark = !dark;
+  document.documentElement.classList.toggle('dark', dark);
+  themeBtn.innerHTML = dark ? sun : moon;
+};
+
+/* ---------- Clear chat ---------------------------------------- */
+clearBtn.onclick=()=>{
+  viewID.innerHTML=viewName.innerHTML='';
+  updatePlaceholder();
+};
+
+/* ---------- Textarea auto-resize + Send enable ---------------- */
+input.addEventListener('input', ()=>{
+  input.style.height='auto';
+  if(input.scrollHeight <= 500) input.style.height = input.scrollHeight + 'px';
+  cnt.textContent = `${input.value.length}/1000`;
+  sendBtn.disabled = !input.value.trim();
+});
+
+downloadBtn.onclick = () =>{
+  const blob = new Blob([JSON.stringify(convoIDs, null, 2)], {type:"application/json"});
+  const url  = URL.createObjectURL(blob);
+  const a    = Object.assign(document.createElement('a'), {
+               href:url, download:'trustchat.json'});
+  a.click(); URL.revokeObjectURL(url);
+};
+
+/* ---------- Settings popup ------------------------------------ */
+function buildSettings(){
+  settingsList.innerHTML = '';
+
+    settingsList.insertAdjacentHTML('beforeend',`
+    <div class="setting">
+      <label for="sw_bias">BIAS</label>
+      <label class="switch">
+        <input type="checkbox" id="sw_bias" ${biasOn?'checked':''}>
+        <span class="slider"></span>
+      </label>
+    </div>`);
+
+  // Listener
+  settingsList.querySelector('#sw_bias').onchange = e => biasOn = e.target.checked;
+
+  PII_LABELS.forEach(label=>{
+    const id = 'sw_'+label;
+    settingsList.insertAdjacentHTML('beforeend',`
+      <div class="setting">
+        <label for="${id}">${label}</label>
+        <label class="switch">
+          <input type="checkbox" id="${id}" ${activeLabels.has(label)?'checked':''}>
+          <span class="slider"></span>
+        </label>
+      </div>`);
+  });
+  settingsList.querySelectorAll('input').forEach(el=>{
+   if(el.id.startsWith('sw_') && el.id!=='sw_bias'){
+      el.onchange = () =>{
+        el.checked
+          ? activeLabels.add(el.id.slice(3))
+          : activeLabels.delete(el.id.slice(3));
+      };
+    }
+  });
+}
+settingsBtn.onclick = ()=>{buildSettings(); dlg.showModal();};
+closeDlg.onclick   = ()=>dlg.close();
+
+/* ---------- Chat send ----------------------------------------- */
+let histIDs=[];
+form.onsubmit = async e=>{
+  e.preventDefault();
+  const userText = input.value.trim();
+  if(!userText) return;
+
+  if(PI_REGEX.test(userText)){
+    piDlg.showModal();
+    return;
+  }
+
+  input.value=''; sendBtn.disabled=true; input.style.height='auto';
+
+  const res = await fetch('/api/chat',{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({history:histIDs,message:userText,filter:[...activeLabels],bias:biasOn})
+  }).then(r=>r.ok?r.json():Promise.reject())
+    .catch(()=>({user_pseudo:userText,bot_pseudo:'❌ Error',bot_clear:'❌ Error'}));
+
+  convo.push({user:userText,            bot:res.bot_clear});
+  convoIDs.push({user:res.user_pseudo,  bot:res.bot_pseudo});
+
+  append(viewID,'me',res.user_pseudo);
+  append(viewName,'me',userText);
+  append(viewID,'bot',res.bot_pseudo);
+  append(viewName,'bot',res.bot_clear);
+
+  histIDs.push([res.user_pseudo,res.bot_pseudo]);
+  updatePlaceholder();
+};
+
+/* ---------- Helper -------------------------------------------- */
+function append(parent,role,text){
+  const m=document.createElement('div');
+  m.className='msg '+(role==='me'?'me':'bot');
+  m.innerHTML = `<div class="bbl">${text}</div>`;
+  parent.appendChild(m);
+  parent.scrollTop = parent.scrollHeight;
+}
+})();
+</script>
+</body>
+</html>

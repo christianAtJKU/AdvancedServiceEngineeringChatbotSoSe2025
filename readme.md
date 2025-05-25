@@ -1,21 +1,28 @@
-# SafeChat
-Ein interaktiver Chatbot mit Pseudonymisierungsfunktion für personenbezogene Daten, realisiert mit [spaCy](https://spacy.io/) und [Gradio](https://gradio.app/).
+# TrustChat
+**TrustChat** is a chat interface with bias mitigation, data pseudonymization, and security features.
 
+## Setup
 ```bash
-# virtuelle Umgebung erstellen
+# create virtual environment
 python -m venv .venv
 
-# virtuelle Umgebung aktivieren
-# Windows:
+# activate virtual environment
+# on Windows:
 .venv\Scripts\activate
-# macOS/Linux:
+# on macOS/Linux:
 source .venv/bin/activate
 
-# Abhängigkeiten installieren
+# install dependencies
 pip install -r requirements.txt
 
-# spaCy-Modell herunterladen
-python -m spacy download en_core_web_sm
+# start application
+uvicorn server:app
+```
 
-# Anwendung starten
-python gradio_ui.py
+## Test
+
+Hi, my name is John Smith (friends call me Johnny).  
+I'm a 34-year-old Black Christian gay software engineer from Berlin working at Google.  
+My blind wife Mary Johnson studies at Harvard University.  
+You can reach me at john.smith@example.com or call me on +4312345678.  
+We'll meet the European Council delegation on 12 July 2025 at 3:00 pm.
