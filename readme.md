@@ -15,6 +15,9 @@ source .venv/bin/activate
 # install dependencies
 pip install -r requirements.txt
 
+# set API key for LLM access (replace with actual key)
+export GROQ_API_KEY="gsk_…"
+
 # start application
 uvicorn server:app
 ```
