@@ -76,7 +76,7 @@ SCRUB_PATTERNS: list[tuple[re.Pattern, str]] = [
             r"boy|girl|husband|wife|mother|father|son|daughter|brother|sister)\b",
             re.I,
         ),
-        "[GENDER]",
+        "[ID01]",
     ),
     # religion
     (
@@ -85,7 +85,7 @@ SCRUB_PATTERNS: list[tuple[re.Pattern, str]] = [
             r"agnostic|sikh|catholic|protestant)\b",
             re.I,
         ),
-        "[RELIGION]",
+        "[ID02]",
     ),
     # ethnicity
     (
@@ -94,7 +94,7 @@ SCRUB_PATTERNS: list[tuple[re.Pattern, str]] = [
             r"african[- ]american|native[- ]american|indian)\b",
             re.I,
         ),
-        "[ETHNICITY]",
+        "[ID03]",
     ),
     # sexual orientation
     (
@@ -103,7 +103,7 @@ SCRUB_PATTERNS: list[tuple[re.Pattern, str]] = [
             r"straight|heterosexual|homosexual)\b",
             re.I,
         ),
-        "[ORIENTATION]",
+        "[ID04]",
     ),
     # disability
     (
@@ -112,7 +112,7 @@ SCRUB_PATTERNS: list[tuple[re.Pattern, str]] = [
             r"paraplegic|schizophrenic|dyslexic)\b",
             re.I,
         ),
-        "[DISABILITY]",
+        "[ID05]",
     ),
 ]
 
@@ -205,8 +205,8 @@ def chat(req: ChatRequest) -> ChatResponse:
         {
             "role": "system",
             "content": (
-                "You are a helpful assistant. All PII has been replaced by IDs and "
-                "protected attributes are masked."
+                "You are a helpful assistant. Respond naturally to all requests. "
+                "Any bracketed terms are just placeholder words."
             ),
         },
         *(
